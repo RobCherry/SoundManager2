@@ -6228,11 +6228,7 @@ if (typeof module === 'object' && module && typeof module.exports === 'object') 
 
   /**
    * commonJS module
-   * note: SM2 requires a window global due to Flash, which makes calls to window.soundManager.
-   * flash may not always be needed, but this is not known until async init and SM2 may even "reboot" into Flash mode.
    */
-
-  window.soundManager = soundManager;
 
   module.exports.SoundManager = SoundManager;
   module.exports.soundManager = soundManager;
@@ -6241,33 +6237,85 @@ if (typeof module === 'object' && module && typeof module.exports === 'object') 
 
   /**
    * AMD - requireJS
-   * example usage:
-   * require(["/path/to/soundmanager2.js"], function(soundManager) {
-   *   soundManager.setup({
+   * basic usage:
+   * require(["/path/to/soundmanager2.js"], function(SoundManager) {
+   *   SoundManager.getInstance().setup({
    *     url: '/swf/',
    *     onready: function() { ... }
    *   })
    * });
+   *
+   * SM2_DEFER usage examples:
+   * window.SM2_DEFER = true;
+   * require(["/path/to/soundmanager2.js"], function(SoundManager) {
+   *   SoundManager.getInstance(function(soundManager) {
+   *     soundManager.setup({
+   *       url: '/swf/',
+   *       ...
+   *     });
+   *     ...
+   *     soundManager.beginDelayedInit();
+   *     ...
+   *   })
+   * }); 
+   *
+   * or
+   *
+   * window.SM2_DEFER = true;
+   * require(["/path/to/soundmanager2.js"], function(SoundManager) {
+   *   SoundManager.getInstance('/swf/', 'container_element_id', function(soundManager) {
+   *     ...
+   *     soundManager.beginDelayedInit();
+   *     ...
+   *   })
+   * }); 
    */
 
   define(function() {
-    // assign globals
-    window.SoundManager = SoundManager;
-    window.soundManager = soundManager;
-    // ... and return the soundManager instance
-    return soundManager;
+    /**
+     * Retrieve the global instance of SoundManager.  If a global instance does not exist, one will be created.
+     *
+     * @param {string} smURL Optional: Path to SWF files when creating a new instance
+     * @param {string} smID Optional: The ID to use for the SWF container element when creating a new instance
+     * @param {Function} smCallback Optional: A callback to use when creating a new instance
+     * @return {SoundManager} The global SoundManager instance
+     */
+    function getInstance(smURL, smID, smCallback) {
+      if (!window.soundManager) {
+        if (smURL instanceof Function) {
+          smCallback = smURL;
+          smURL = _undefined;
+          smID = _undefined;
+        } else if (smID instanceof Function) {
+          smCallback = smID;
+          smID = _undefined;
+        }
+        window.soundManager = new SoundManager(smURL, smID);
+        if (smCallback instanceof Function) {
+          smCallback(window.soundManager);
+        }
+      }
+      return window.soundManager;
+    }
+    return {
+      constructor: SoundManager,
+      getInstance: getInstance
+    }
   });
 
-} else {
-
-  // standard browser case
-
-  // constructor
-  window.SoundManager = SoundManager;
-
-  // public API, flash callbacks etc.
-  window.soundManager = soundManager;
-
 }
+
+// standard browser case
+
+ /**
+   * note: SM2 requires a window global due to Flash, which makes calls to window.soundManager.
+   * Flash may not always be needed, but this is not known until async init and SM2 may even "reboot" into Flash mode.
+   */
+
+// constructor
+window.SoundManager = SoundManager;
+
+// public API, flash callbacks etc.
+window.soundManager = soundManager;
 
 }(window));
